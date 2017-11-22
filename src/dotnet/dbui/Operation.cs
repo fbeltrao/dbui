@@ -24,7 +24,20 @@ namespace dbui
         /// </summary>
         /// <returns></returns>
         public ICollection<OperationParameter> Parameters { get; set; }
-        public OperationResultType ResultType { get; private set; }
+        
+        /// <summary>
+        /// Defines the operation result type:
+        /// - RowCount: only returns the amount of affected rows
+        /// - Table: returns tabular data (one or more2)
+        /// </summary>
+        /// <returns></returns>
+        public OperationResultType ResultType { get; set; }
+
+        /// <summary>
+        /// Set the stored procedure name to be called
+        /// </summary>
+        /// <returns></returns>
+        public string StoredProcedureName { get; set; }
 
         /// <summary>
         /// Executes the 
@@ -35,32 +48,34 @@ namespace dbui
         {
             var cmd = connection.CreateCommand();
             cmd.CommandType = CommandType.StoredProcedure;
+            cmd.CommandText = this.StoredProcedureName;
 
-            foreach (var parameter in this.Parameters)
+            if (this.Parameters != null)
             {
-                if (options.ParameterValues.TryGetValue(parameter.Name, out object parameterValue))
+                foreach (var parameter in this.Parameters)
                 {
-                    var dbParameter = cmd.CreateParameter();
-                    dbParameter.ParameterName = string.Concat("@", parameter.Name);
-                    dbParameter.Value = parameterValue;
-                    cmd.Parameters.Add(dbParameter);
-                }
-                else 
-                {
-                    if (parameter.Required)
+                    if (options.ParameterValues.TryGetValue(parameter.Name, out object parameterValue))
                     {
-                        throw new MissingParameterException($"Value for parameter {parameter.Name} is missing");
+                        var dbParameter = cmd.CreateParameter();
+                        dbParameter.ParameterName = string.Concat("@", parameter.Name);
+                        dbParameter.Value = parameterValue;
+                        cmd.Parameters.Add(dbParameter);
+                    }
+                    else 
+                    {
+                        if (parameter.Required)
+                        {
+                            throw new MissingParameterException($"Value for parameter {parameter.Name} is missing");
+                        }
                     }
                 }
             }
 
             var result = new OperationExecutionResult();
-            IDbTransaction transaction = null;
             try
             {
                 connection.Open();
-
-                transaction = connection.BeginTransaction();
+                cmd.Transaction = connection.BeginTransaction();
 
                 var stopwatch = Stopwatch.StartNew();
                 if (this.ResultType == OperationResultType.RowCount)
@@ -95,16 +110,18 @@ namespace dbui
                 result.ExecutionTime = stopwatch.Elapsed;
 
                 if (options.Preview)
-                    transaction.Rollback();
+                    cmd.Transaction.Rollback();
                 else 
-                    transaction.Commit();
+                    cmd.Transaction.Commit();
                 
             }
-            finally
+            catch (Exception ex)
             {
+                cmd.Transaction?.Rollback();
+            }
+            finally
+            {                
                 connection.Close();
-            
-
             }
             
             
