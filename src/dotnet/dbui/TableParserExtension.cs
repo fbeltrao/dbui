@@ -36,9 +36,12 @@ namespace dbui
                 arrValues[0, colIndex] = table.Columns[colIndex].ColumnName;
             }
 
-            for (int rowIndex = 1; rowIndex <= arrValues.GetLength(0); rowIndex++)
+            var rowCount = arrValues.GetLength(0);
+            var colCount = arrValues.GetLength(1);
+
+            for (int rowIndex = 1; rowIndex < rowCount; rowIndex++)
             {
-                for (int colIndex = 0; colIndex < arrValues.GetLength(1); colIndex++)
+                for (int colIndex = 0; colIndex < colCount; colIndex++)
                 {
                     string cellValueAsString = string.Empty;
                     object cellValue = table.Rows[rowIndex - 1][colIndex];

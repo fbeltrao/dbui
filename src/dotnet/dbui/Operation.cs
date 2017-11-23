@@ -99,6 +99,9 @@ namespace dbui
                             dataSet.Tables.Add(dt);                                
                             
 
+                            if (reader.IsClosed)
+                                break;
+
                             if (!reader.NextResult())
                                 break;
                         }
@@ -117,6 +120,7 @@ namespace dbui
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"ERR: {ex.ToString()}");
                 cmd.Transaction?.Rollback();
             }
             finally
@@ -126,7 +130,7 @@ namespace dbui
             
             
             
-            return null;
+            return result;
         }
     }
 }
